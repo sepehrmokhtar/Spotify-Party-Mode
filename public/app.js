@@ -8,7 +8,7 @@ let pendingRequests = [];
 let spotifyPlayer = null;
 let deviceId = null;
 let isPlaying = false;
-let currentPopupRequest = null; // Track the current popup request
+let currentPopupRequest = null;
 
 // DOM elements
 const elements = {
@@ -47,7 +47,6 @@ const elements = {
     songsPlayed: document.getElementById('songsPlayed'),
     activeUsers: document.getElementById('activeUsers'),
     pendingRequests: document.getElementById('pendingRequests'),
-    // Popup elements
     requestPopup: document.getElementById('requestPopup'),
     popupAlbumArt: document.getElementById('popupAlbumArt'),
     popupSongName: document.getElementById('popupSongName'),
@@ -63,46 +62,31 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
-    // Authentication
     elements.loginBtn.addEventListener('click', handleSpotifyLogin);
     elements.logoutBtn.addEventListener('click', handleLogout);
-
-    // Session management
     elements.createSessionBtn.addEventListener('click', () => showModal('createModal'));
     elements.joinSessionBtn.addEventListener('click', () => showModal('joinModal'));
     elements.createCancelBtn.addEventListener('click', () => hideModal('createModal'));
     elements.joinCancelBtn.addEventListener('click', () => hideModal('joinModal'));
     elements.createConfirmBtn.addEventListener('click', handleCreateSession);
     elements.joinConfirmBtn.addEventListener('click', handleJoinSession);
-
-    // Session interface
     elements.playNextBtn.addEventListener('click', handlePlayNext);
     elements.searchBtn.addEventListener('click', handleSearch);
     elements.searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleSearch();
     });
-
-    // Popup event listeners
     elements.popupAcceptBtn.addEventListener('click', handlePopupAccept);
     elements.popupDenyBtn.addEventListener('click', handlePopupDeny);
 }
 
-// --- POPUP FUNCTIONS ---
 function showRequestPopup(request) {
     if (!isDJ) return;
-    
     currentPopupRequest = request;
-    
-    // Update popup content
     elements.popupSongName.textContent = request.name;
     elements.popupArtistName.textContent = request.artist;
     elements.popupRequesterName.textContent = request.requestedBy.username;
     elements.popupAlbumArt.src = request.albumArt || 'https://via.placeholder.com/60';
-    
-    // Show popup
     elements.requestPopup.classList.remove('request-popup-hidden');
-    
-    // Auto-hide after 10 seconds if no action
     setTimeout(() => {
         if (currentPopupRequest && currentPopupRequest.id === request.id) {
             hideRequestPopup();
@@ -117,7 +101,6 @@ function hideRequestPopup() {
 
 async function handlePopupAccept() {
     if (!currentPopupRequest) return;
-    
     try {
         await approveRequest(currentPopupRequest.id);
         hideRequestPopup();
@@ -128,7 +111,6 @@ async function handlePopupAccept() {
 
 async function handlePopupDeny() {
     if (!currentPopupRequest) return;
-    
     try {
         await denyRequest(currentPopupRequest.id);
         hideRequestPopup();
@@ -140,9 +122,9 @@ async function handlePopupDeny() {
 function checkAuthStatus() {
     const token = localStorage.getItem('spotify_access_token');
     if (token) {
-      accessToken = token;
-      currentUser = JSON.parse(localStorage.getItem('spotify_user') || '{}');
-      updateAuthUI(true);
+        accessToken = token;
+        currentUser = JSON.parse(localStorage.getItem('spotify_user') || '{}');
+        updateAuthUI(true);
     }
 }
 
@@ -181,8 +163,6 @@ function showModal(modalId) {
         alert('Please connect your Spotify account first!');
         return;
     }
-    document.getElementById(modalId).classList.remove('hidden');
-}
     document.getElementById(modalId).classList.remove('hidden');
 }
 
@@ -269,7 +249,7 @@ async function handleJoinSession() {
 
         const data = await joinResponse.json();
         currentSession = data.session;
-        isDJ = (currentSession.dj && currentSession.dj.userId === currentUser.id);
+        isDJ = false;
 
         hideModal('joinModal');
         showSessionInterface();
@@ -294,7 +274,6 @@ function initializeSpotifyPlayer() {
         return;
     }
 
-    console.log("Initializing Spotify Player...");
     spotifyPlayer = new Spotify.Player({
         name: 'CTRL THE AUX Web Player',
         getOAuthToken: cb => { cb(accessToken); },
@@ -346,7 +325,6 @@ async function playSongOnWebPlayer(songUri) {
         });
 
         if (response.ok) {
-            console.log('Successfully started playback');
             isPlaying = true;
             return true;
         } else {
@@ -374,15 +352,12 @@ function showWelcomeSection() {
 
 function updateSessionUI() {
     if (!currentSession) return;
-
     elements.sessionTitle.textContent = currentSession.name;
     elements.sessionCodeText.textContent = currentSession.id;
     elements.participantCount.textContent = `${currentSession.participants.length} participants`;
-
     if (currentSession.currentSong) {
         showCurrentSong(currentSession.currentSong);
     }
-
     updateQueueDisplay();
     updateStats();
 }
@@ -411,11 +386,8 @@ function connectToSession(sessionId) {
     socket.on('pendingRequestsUpdate', (data) => {
         pendingRequests = data.pendingRequests;
         updatePendingRequestsUI();
-        
-        // Show popup for DJ when new request comes in
         if (isDJ && data.pendingRequests.length > 0) {
             const latestRequest = data.pendingRequests[data.pendingRequests.length - 1];
-            // Only show popup if this is a new request (not already shown)
             if (!currentPopupRequest || currentPopupRequest.id !== latestRequest.id) {
                 showRequestPopup(latestRequest);
             }
@@ -494,7 +466,6 @@ function displaySearchResults(tracks) {
 
 async function addSongToQueue(track) {
     if (!currentSession) return;
-
     try {
         const response = await fetch(`/api/session/${currentSession.id}/add-song`, {
             method: 'POST',
@@ -510,7 +481,6 @@ async function addSongToQueue(track) {
                 }
             })
         });
-
         const data = await response.json();
         if (data.success) {
             elements.searchInput.value = '';
@@ -535,7 +505,10 @@ async function requestSong(track) {
                     uri: track.uri,
                     albumArt: track.albumArt || 'https://via.placeholder.com/40'
                 },
-                requestedBy: { username: currentUser.display_name, userId: currentUser.id }
+                requestedBy: {
+                    username: currentUser ? currentUser.display_name : 'Guest',
+                    userId: currentUser ? currentUser.id : 'guest'
+                }
             })
         });
         const data = await response.json();
@@ -602,7 +575,6 @@ function updateDJUI() {
     if (isDJ) {
         elements.playNextBtn.classList.remove('hidden');
         if (elements.pendingRequests) elements.pendingRequests.classList.remove('hidden');
-        // Show DJ role indicator
         const roleIndicator = document.getElementById('roleIndicator');
         if (roleIndicator) roleIndicator.classList.remove('hidden');
     } else {
@@ -647,7 +619,7 @@ function updateQueueDisplay() {
 }
 
 async function voteSong(songId, voteType) {
-    if (!currentSession || !currentUser) return;
+    if (!currentSession) return;
 
     try {
         const response = await fetch(`/api/session/${currentSession.id}/vote`, {
@@ -655,7 +627,7 @@ async function voteSong(songId, voteType) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 songId,
-                username: currentUser.display_name || 'Anonymous',
+                username: currentUser ? currentUser.display_name : 'Guest',
                 voteType
             })
         });
@@ -726,7 +698,6 @@ async function handlePlayNext() {
 
 function updateStats() {
     if (!currentSession) return;
-
     const totalVotes = currentSession.queue.reduce((sum, song) => sum + song.votes, 0);
     elements.totalVotes.textContent = totalVotes;
     elements.activeUsers.textContent = currentSession.participants.length;
