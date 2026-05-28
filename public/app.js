@@ -177,10 +177,12 @@ function updateAuthUI(isLoggedIn) {
 }
 
 function showModal(modalId) {
-    if (!accessToken) {
+    if (modalId === 'createModal' && !accessToken) {
         alert('Please connect your Spotify account first!');
         return;
     }
+    document.getElementById(modalId).classList.remove('hidden');
+}
     document.getElementById(modalId).classList.remove('hidden');
 }
 
@@ -257,7 +259,7 @@ async function handleJoinSession() {
             body: JSON.stringify({
                 sessionId,
                 username,
-                userId: currentUser.id
+                userId: 'guest_' + Math.random().toString(36).substr(2, 9)
             })
         });
 
