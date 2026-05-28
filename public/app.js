@@ -421,7 +421,8 @@ async function handleSearch() {
     if (!query) return;
 
     try {
-        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}&accessToken=${accessToken}`);
+        const sessionId = currentSession ? currentSession.id : '';
+        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}&sessionId=${sessionId}`);
         const data = await response.json();
         displaySearchResults(data.tracks);
     } catch (error) {
