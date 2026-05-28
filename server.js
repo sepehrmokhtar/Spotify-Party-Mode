@@ -231,12 +231,15 @@ app.post('/api/session/:sessionId/vote', (req, res) => {
 // Search for songs to add to queue
 app.get('/api/search', async (req, res) => {
   try {
-    const { query, accessToken } = req.query;
- 
+    const { query, sessionId } = req.query;
+
+    const session = sessionId ? activeSessions.get(sessionId) : null;
+    const accessToken = session ? session.accessToken : null;
+
     if (!accessToken) {
       return res.status(401).json({ error: 'Access token required' });
     }
- 
+
     spotifyApi.setAccessToken(accessToken);
  
     const results = await spotifyApi.searchTracks(query, { limit: 10 });
